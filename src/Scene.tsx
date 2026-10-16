@@ -9,6 +9,7 @@ import {
   useContext,
   type RefObject,
   type ReactNode,
+  type ComponentRef,
 } from "react";
 import {
   Canvas,
@@ -25,6 +26,11 @@ import {
   type Vec,
   type MoleculeData,
 } from "./chemistry";
+import {
+  interaction,
+  inducedResponse,
+  respondedSeparation,
+} from "./interactions";
 const AnnotationPortal = createContext<
   RefObject<HTMLDivElement | null> | undefined
 >(undefined);
@@ -147,6 +153,107 @@ function Link({ a, b, opacity = 1 }: { a: Vec; b: Vec; opacity?: number }) {
     />
   );
 }
+type ScenePoint = Vec | (() => Vec);
+const resolvePoint = (p: ScenePoint) =>
+  new THREE.Vector3(...(typeof p === "function" ? p() : p));
+function useMovingPoint(target: Vec, playing: boolean) {
+  const point = useRef(new THREE.Vector3(...target));
+  useFrame((_, dt) => {
+    const goal = new THREE.Vector3(...target);
+    if (playing) point.current.lerp(goal, 1 - Math.exp(-dt * 3.5));
+    else point.current.copy(goal);
+  });
+  return point;
+}
+function Follow({
+  point,
+  children,
+}: {
+  point: RefObject<THREE.Vector3>;
+  children: ReactNode;
+}) {
+  const g = useRef<THREE.Group>(null);
+  useFrame(() => {
+    if (g.current && point.current) g.current.position.copy(point.current);
+  });
+  return (
+    <group ref={g} position={point.current}>
+      {children}
+    </group>
+  );
+}
+/** Arrow lengths and line weights encode qualitative response, never force units. */
+function InteractionCue({
+  a,
+  b,
+  strength,
+  show = true,
+}: {
+  a: ScenePoint;
+  b: ScenePoint;
+  strength: number;
+  show?: boolean;
+}) {
+  const line = useRef<ComponentRef<typeof Line>>(null),
+    g = useRef<THREE.Group>(null);
+  const arrows = useMemo(
+    () => [new THREE.ArrowHelper(), new THREE.ArrowHelper()],
+    [],
+  );
+  const magnitude = Math.abs(strength),
+    repel = strength < 0,
+    color = repel ? "#e9ae82" : "#96e0c0";
+  useFrame(() => {
+    const start = resolvePoint(a),
+      end = resolvePoint(b),
+      dir = end.clone().sub(start).normalize(),
+      length = Math.min(0.12 + magnitude * 0.85, start.distanceTo(end) * 0.32),
+      off = new THREE.Vector3(0, -0.65, 0.2);
+    if (g.current) g.current.visible = show && magnitude > 0.008;
+    if (line.current) {
+      line.current.geometry.setPositions([
+        ...start.toArray(),
+        ...end.toArray(),
+      ]);
+      line.current.computeLineDistances();
+      line.current.visible = !repel;
+    }
+    arrows.forEach((arrow, i) => {
+      const point = i ? end : start;
+      arrow.position.copy(point).add(off);
+      arrow.setDirection(
+        dir.clone().multiplyScalar((i ? -1 : 1) * (repel ? -1 : 1)),
+      );
+      arrow.setLength(
+        length,
+        0.11 + magnitude * 0.06,
+        0.065 + magnitude * 0.035,
+      );
+      arrow.setColor(color);
+    });
+  });
+  return (
+    <group ref={g}>
+      <Line
+        ref={line}
+        points={[
+          [0, 0, 0],
+          [1, 0, 0],
+        ]}
+        color={color}
+        lineWidth={1 + magnitude * 4}
+        dashed
+        dashSize={0.08 + magnitude * 0.08}
+        gapSize={0.11}
+        transparent
+        opacity={0.08 + magnitude * 0.88}
+      />
+      {arrows.map((arrow, i) => (
+        <primitive key={i} object={arrow} />
+      ))}
+    </group>
+  );
+}
 function Molecule({
   id,
   position = [0, 0, 0],
@@ -182,11 +289,15 @@ function Molecule({
     onDrag?.(true);
     const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
       e.camera.getWorldDirection(new THREE.Vector3()),
-      new THREE.Vector3(...position),
+      g.current?.getWorldPosition(new THREE.Vector3()) ??
+        new THREE.Vector3(...position),
     );
     drag.current = {
       plane,
-      offset: new THREE.Vector3(...position).sub(e.point),
+      offset: (
+        g.current?.getWorldPosition(new THREE.Vector3()) ??
+        new THREE.Vector3(...position)
+      ).sub(e.point),
     };
     (e.target as Element).setPointerCapture(e.pointerId);
   };
@@ -196,6 +307,7 @@ function Molecule({
     const hit = new THREE.Vector3();
     if (e.ray.intersectPlane(drag.current.plane, hit)) {
       hit.add(drag.current.offset);
+      g.current?.parent?.parent?.worldToLocal(hit);
       onMove?.([
         THREE.MathUtils.clamp(hit.x, -0.3, 5),
         THREE.MathUtils.clamp(hit.y, -2.8, 2.8),
@@ -317,8 +429,8 @@ function Molecule({
     </group>
   );
 }
-function useTime(playing: boolean) {
-  const t = useRef(0);
+function useTime(playing: boolean, initial = 0) {
+  const t = useRef(initial);
   useFrame((_, dt) => {
     if (playing) t.current += Math.min(dt, 0.05);
   });
@@ -341,13 +453,13 @@ function Hydrogen({
   const left = swap ? partner : s.sample,
     right = swap ? s.sample : partner;
   const [offset, setOffset] = useState<Vec>([0, 0, 0]);
-  const b: Vec = [s.distance - 1.6 + offset[0], offset[1], offset[2]];
+  const separation = respondedSeparation(s);
+  const b: Vec = [separation - 1.6 + offset[0], offset[1], offset[2]];
   const theta = ((-52 + s.angle) * Math.PI) / 180;
   const can = molecules[left].donor && molecules[right].acceptor;
-  const geometryFavorable =
-    Math.abs(s.angle) < 40 && Math.hypot(b[0] + 0.6, b[1], b[2]) < 3.3;
+  const pull = interaction(s, Math.hypot(b[0] + 1.6, b[1], b[2]));
   return (
-    <>
+    <group position={[1.6 - separation / 2, 0, 0]}>
       <Molecule
         id={left}
         position={[-1.6, 0, 0]}
@@ -363,7 +475,7 @@ function Hydrogen({
         draggable
         onDrag={onDrag}
         onMove={(v) => {
-          setOffset([v[0] - (s.distance - 1.6), v[1], v[2]]);
+          setOffset([v[0] - (separation - 1.6), v[1], v[2]]);
           onMove?.(v);
           onStatus?.(
             can &&
@@ -374,11 +486,12 @@ function Hydrogen({
           );
         }}
       />
-      {can && geometryFavorable && s.attractions && (
-        <Link
+      {can && (
+        <InteractionCue
           a={[-0.6, 0, 0]}
           b={b}
-          opacity={Math.max(0.15, 1 - Math.abs(s.angle) / 40)}
+          strength={pull}
+          show={s.attractions}
         />
       )}
       {s.network && (
@@ -403,14 +516,14 @@ function Hydrogen({
           )}
         </>
       )}
-    </>
+    </group>
   );
 }
 function Ion({ s }: { s: Settings }) {
   const count = s.network ? 8 : 1;
-  const r = s.distance - 1.3 + s.radius;
+  const r = respondedSeparation(s) - 1.3 + s.radius;
   return (
-    <>
+    <group position={[s.network ? 0 : -r / 2, 0, 0]}>
       <mesh>
         <sphereGeometry args={[s.radius, 40, 32]} />
         <meshStandardMaterial
@@ -433,7 +546,7 @@ function Ion({ s }: { s: Settings }) {
         );
         return <WaterAround key={i} n={n} r={r} s={s} />;
       })}
-    </>
+    </group>
   );
 }
 function WaterAround({
@@ -446,7 +559,11 @@ function WaterAround({
   s: Settings;
 }) {
   const g = useRef<THREE.Group>(null);
-  const p = n.clone().multiplyScalar(r);
+  const point = useMovingPoint(
+    n.clone().multiplyScalar(r).toArray() as Vec,
+    s.playing,
+  );
+  const pull = interaction(s);
   const hDirection = s.charge > 0 ? n : n.clone().negate();
   const q = new THREE.Quaternion().setFromUnitVectors(
     new THREE.Vector3(0.612, 0.791, 0),
@@ -455,54 +572,75 @@ function WaterAround({
   useFrame((_, dt) => g.current?.quaternion.slerp(q, 1 - Math.exp(-dt * 5)));
   return (
     <>
-      <group position={p} ref={g}>
-        <Molecule id="water" s={{ ...s, netDipole: false }} />
-      </group>
-      {s.attractions && (
-        <Link
-          a={n.clone().multiplyScalar(s.radius).toArray() as Vec}
-          b={
-            (s.charge > 0
-              ? p
-              : p.clone().add(hDirection.clone().multiplyScalar(0.65))
-            ).toArray() as Vec
-          }
-          opacity={Math.min(0.95, (Math.abs(s.charge) / (r * r)) * 2)}
-        />
-      )}
+      <Follow point={point}>
+        <group ref={g}>
+          <Molecule id="water" s={{ ...s, netDipole: false }} />
+        </group>
+      </Follow>
+      <InteractionCue
+        a={n.clone().multiplyScalar(s.radius).toArray() as Vec}
+        b={() =>
+          point.current
+            .clone()
+            .addScaledVector(hDirection, s.charge < 0 ? 0.65 : 0)
+            .toArray() as Vec
+        }
+        strength={pull}
+        show={s.attractions}
+      />
     </>
   );
 }
 function Dipole({ s }: { s: Settings }) {
-  const theta = (s.angle * Math.PI) / 180;
+  const distance = respondedSeparation(s),
+    theta = (s.angle * Math.PI) / 180;
+  // Orient each polar molecule's permanent dipole along the common comparison axis.
+  const base =
+    s.sample === "water"
+      ? Math.PI - Math.atan2(0.791, 0.612)
+      : s.sample === "chcl3"
+        ? Math.PI / 2
+        : 0;
+  const left = useMovingPoint([-distance / 2, 0, 0], s.playing),
+    right = useMovingPoint([distance / 2, 0, 0], s.playing);
+  const pull = interaction(s);
   return (
     <>
-      <Molecule id={s.sample} position={[-s.distance / 2, 0, 0]} s={s} />
-      <Molecule
-        id={s.sample}
-        position={[s.distance / 2, 0, 0]}
-        rotation={theta}
-        s={s}
+      <Follow point={left}>
+        <Molecule id={s.sample} rotation={base} s={s} />
+      </Follow>
+      <Follow point={right}>
+        <Molecule id={s.sample} rotation={base + theta} s={s} />
+      </Follow>
+      <InteractionCue
+        a={() =>
+          left.current
+            .clone()
+            .add(new THREE.Vector3(0.75, 0, 0))
+            .toArray() as Vec
+        }
+        b={() =>
+          right.current
+            .clone()
+            .add(new THREE.Vector3(-0.75, 0, 0))
+            .toArray() as Vec
+        }
+        strength={pull}
+        show={s.attractions}
       />
-      {s.attractions &&
-        molecules[s.sample].polar &&
-        s.sample === "hcl" &&
-        Math.cos(theta) > 0.35 && (
-          <Link
-            a={[-s.distance / 2 + 0.65, 0, 0]}
-            b={[
-              s.distance / 2 - 0.65 * Math.cos(theta),
-              -0.65 * Math.sin(theta),
-              0,
-            ]}
-          />
-        )}
-      {!molecules[s.sample].polar && (
-        <Label p={[0, -1.7, 0]}>Σ bond dipoles = 0</Label>
-      )}
+      <Label p={[0, -2, 0]} tone="force-caption">
+        {!molecules[s.sample].polar
+          ? "Σ bond dipoles = 0 · dispersion remains"
+          : pull < -0.05
+            ? "LIKE ENDS · REPULSIVE ARRANGEMENT"
+            : pull > 0.05
+              ? "UNLIKE ENDS · ATTRACTIVE ARRANGEMENT"
+              : "TURNING POINT · WEAK AXIAL PULL"}
+      </Label>
     </>
   );
 }
+
 const hydrocarbon = (branched: boolean): MoleculeData => {
   const cp: Vec[] = branched
     ? [
@@ -562,41 +700,50 @@ const hydrocarbon = (branched: boolean): MoleculeData => {
 molecules.octane = hydrocarbon(false);
 molecules.isooctane = hydrocarbon(true);
 function Dispersion({ s }: { s: Settings }) {
-  const t = useTime(s.playing),
-    left = useRef<THREE.Group>(null),
-    right = useRef<THREE.Group>(null),
-    attraction = useRef<THREE.Group>(null),
+  const t = useTime(s.playing, s.playing ? 0 : 3.2),
+    clouds = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)],
     sign = useRef<HTMLSpanElement>(null);
-  const chain = s.shape !== "compact";
-  const spacing = chain ? s.distance * 0.85 : s.distance;
-  const phase = useRef(0);
+  const chain = s.shape !== "compact",
+    spacing = chain ? s.distance * 0.85 : s.distance,
+    coupling = inducedResponse(s),
+    pull = interaction(s);
+  const material = useRef<THREE.MeshStandardMaterial>(null);
   useFrame(() => {
-    const p = t.current % 8;
-    const amp = p < 1 ? 0 : Math.sin((p - 1) * 2.2) * 0.32 * s.polarizability;
-    phase.current = amp;
-    [left, right].forEach((g, i) => {
-      if (g.current) {
-        const inducedAmp = i && p < 2 ? 0 : amp;
-        g.current.position.x =
-          (chain ? 0 : i ? spacing / 2 : -spacing / 2) + inducedAmp;
-        g.current.scale.set(
-          (chain ? 2.6 : 1.2) * s.size + Math.abs(amp) * 0.6,
-          chain ? 0.7 : 1.05 * s.size,
-          1.05 * s.size,
-        );
-      }
+    const phase = t.current % 8,
+      wave = phase < 1 ? 0 : Math.sin((phase - 1) * 2.2);
+    const source = 0.43 * Math.sqrt(s.polarizability) * wave;
+    const independent =
+      phase < 1
+        ? 0
+        : 0.13 * Math.sin(t.current * 3.1 + 1.7) * (1 - Math.min(1, coupling));
+    const induced = phase < 2 ? 0 : source * coupling;
+    [source, induced + independent].forEach((amp, i) => {
+      const g = clouds[i].current;
+      if (!g) return;
+      g.position.set(
+        chain ? 0 : (i - 0.5) * spacing,
+        chain ? (i - 0.5) * spacing : 0,
+        0,
+      );
+      if (chain) g.position.y += amp;
+      else g.position.x += amp;
+      g.scale.set(
+        (chain ? 2.6 : 1.17) * s.size + (chain ? 0 : Math.abs(amp) * 0.7),
+        (chain ? 0.56 : 1) * s.size + (chain ? Math.abs(amp) * 0.5 : 0),
+        s.size,
+      );
     });
-    if (attraction.current)
-      attraction.current.visible = p > 2 && Math.abs(amp) > 0.06;
+    if (material.current)
+      material.current.opacity = 0.09 + Math.min(1, coupling) * 0.15;
     if (sign.current)
       sign.current.textContent =
-        p < 1
-          ? "01 · Symmetric average distribution"
-          : p < 2
-            ? "02 · An instantaneous dipole forms"
-            : amp > 0
-              ? "03 · δ+ → δ−     induces     δ+ → δ−"
-              : "03 · δ− ← δ+     induces     δ− ← δ+";
+        phase < 1
+          ? "01 · Average electron distribution"
+          : phase < 2
+            ? "02 · A temporary dipole forms"
+            : coupling < 0.2
+              ? "03 · Weak induction · independent fluctuations remain"
+              : "03 · Correlated dipoles · neighbor responds";
   });
   const sample = chain
     ? s.shape === "branched"
@@ -620,50 +767,53 @@ function Dispersion({ s }: { s: Settings }) {
         </group>
       ))}
       {s.cloud &&
-        [left, right].map((g, i) => (
-          <group
-            key={i}
-            ref={g}
-            position={
-              chain ? [0, (i - 0.5) * spacing, 0] : [(i - 0.5) * spacing, 0, 0]
-            }
-          >
-            <mesh scale={[1, chain ? 0.5 : 1, 1]}>
+        clouds.map((g, i) => (
+          <group key={i} ref={g}>
+            <mesh>
               <sphereGeometry args={[1, 40, 24]} />
               <meshStandardMaterial
-                color={i ? "#a7a8e9" : "#8cbed7"}
+                ref={i ? material : undefined}
+                color={i ? "#aaa5ed" : "#91bfdb"}
                 transparent
-                opacity={0.14}
+                opacity={0.17}
                 roughness={0.75}
                 depthWrite={false}
               />
             </mesh>
-            <mesh scale={[0.92, chain ? 0.44 : 0.92, 0.92]}>
-              <sphereGeometry args={[1, 32, 20]} />
+            <mesh scale={[0.55, 0.67, 0.67]}>
+              <sphereGeometry args={[1, 24, 16]} />
               <meshStandardMaterial
-                color="#a6b8e7"
+                color={i ? "#c5baff" : "#afdaec"}
                 transparent
-                opacity={0.09}
+                opacity={0.17}
                 depthWrite={false}
               />
             </mesh>
           </group>
         ))}
-      {s.attractions && (
-        <group ref={attraction}>
-          <Link
-            a={chain ? [0, -spacing / 2 + 0.65, 0] : [-spacing / 2 + 0.8, 0, 0]}
-            b={chain ? [0, spacing / 2 - 0.65, 0] : [spacing / 2 - 0.8, 0, 0]}
-            opacity={0.5}
-          />
-        </group>
+      <InteractionCue
+        a={chain ? [0, -spacing / 2 + 0.7, 0] : [-spacing / 2 + 0.8, 0, 0]}
+        b={chain ? [0, spacing / 2 - 0.7, 0] : [spacing / 2 - 0.8, 0, 0]}
+        strength={pull}
+        show={s.attractions}
+      />
+      {!chain && (
+        <>
+          <Label p={[-spacing / 2, 1.55, 0]} tone="force-caption">
+            INSTANTANEOUS
+          </Label>
+          <Label p={[spacing / 2, 1.55, 0]} tone="force-caption">
+            INDUCED RESPONSE
+          </Label>
+        </>
       )}
-      <Label p={[0, -2, 0]} tone="cloud-caption" labelRef={sign}>
-        Average distribution · symmetric
+      <Label p={[0, chain ? -2.8 : -2, 0]} tone="cloud-caption" labelRef={sign}>
+        Average electron distribution
       </Label>
     </>
   );
 }
+
 function Core({
   s,
   onDrag,
@@ -890,8 +1040,16 @@ class Boundary extends Component<{ children: ReactNode }, { error: boolean }> {
     );
   }
 }
-function FitCamera({ view }: { view: string }) {
+function FitCamera({ view, s }: { view: string; s: Settings }) {
   const { camera, size } = useThree();
+  const span =
+    s.mode === "ion" && s.network
+      ? 2 * (s.distance - 1.3 + s.radius + 1.5)
+      : s.distance + 2.8 * s.size;
+  const verticalSpan =
+    s.mode === "dispersion" && s.shape !== "compact"
+      ? s.distance * 0.85 + 2.5
+      : 0;
   useLayoutEffect(() => {
     const aspect = size.width / Math.max(1, size.height);
     const distance =
@@ -899,11 +1057,15 @@ function FitCamera({ view }: { view: string }) {
         ? Math.max(12, 22 / aspect)
         : view === "matter"
           ? Math.max(12, 18 / aspect)
-          : 11;
+          : Math.max(
+              11,
+              (span / (0.728 * aspect)) * 1.08,
+              (verticalSpan / 0.728) * 1.08,
+            );
     camera.position.set(0, distance * 0.155, distance);
     camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix();
-  }, [camera, size.width, size.height, view]);
+  }, [camera, size.width, size.height, view, span, verticalSpan]);
   return null;
 }
 export default function Scene({
@@ -951,7 +1113,7 @@ export default function Scene({
                 </div>
               }
             >
-              <FitCamera view={view} />
+              <FitCamera view={view} s={s} />
               <ambientLight intensity={1.2} />
               <directionalLight position={[4, 7, 6]} intensity={3} />
               <directionalLight

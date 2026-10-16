@@ -272,6 +272,7 @@ export type Settings = {
   shape: string;
   playing: boolean;
   highlight: boolean;
+  released: boolean;
 };
 export const defaults = (mode: Mode): Settings => ({
   mode,
@@ -294,6 +295,7 @@ export const defaults = (mode: Mode): Settings => ({
   shape: "compact",
   playing: !matchMedia("(prefers-reduced-motion: reduce)").matches,
   highlight: true,
+  released: false,
 });
 export function explanation(s: Settings) {
   if (s.mode === "ion")
@@ -301,7 +303,7 @@ export function explanation(s: Settings) {
       title: s.charge > 0 ? "Oxygen turns inward." : "Hydrogens turn inward.",
       body: `The ${s.charge > 0 ? "negative oxygen region" : "positive hydrogen regions"} of water ${s.charge > 0 ? "faces" : "face"} the ${s.charge > 0 ? "cation" : "anion"}. Greater ionic charge increases attraction; a smaller ion lets water approach its charge more closely.`,
       detail:
-        "The water dipole reorients in the ion’s electric field. Radius is varied at a fixed surface gap, so changing radius changes center-to-center separation. These are hypothetical ions; the charge and radius controls do not identify real chemical species.",
+        "The water dipole reorients in the ion’s electric field. Radius is varied at a fixed surface gap, so changing radius changes center-to-center separation. Held distance isolates attraction strength: changing charge does not automatically change a controlled position. Release the particles for an exaggerated, scripted approach with short-range repulsion preventing overlap. This is not a calculated equilibrium distance. The ions are hypothetical.",
       status: `${s.charge > 0 ? "O δ− → cation" : "H δ+ → anion"} · ${s.network ? "hydration shell" : "single water"}`,
     };
   if (s.mode === "dipole") {
@@ -316,7 +318,7 @@ export function explanation(s: Settings) {
         ? `${m.formula} has ${m.shape.toLowerCase()}. Its bond dipoles cancel as vectors. Dispersion still occurs between these molecules.`
         : "Turn the second molecule: a head-to-tail arrangement favors attraction; turning like ends toward each other is unfavorable. Greater separation weakens the interaction.",
       detail:
-        "Bond-dipole arrows point toward the electron-rich atom. A molecular dipole is the vector sum of the bond contributions and electron distribution. This fixed-center arrangement is a conceptual electrostatic comparison; real molecules continuously rotate and move.",
+        "Bond-dipole arrows point toward the electron-rich atom. A molecular dipole is the vector sum of the bond contributions and electron distribution. Hold the distance to compare the pull, or release the particles for a scripted approach or retreat. Covalent bonds within each molecule stay intact; intermolecular attraction changes the spacing between molecules.",
       status: !m.polar
         ? "Net molecular dipole = 0"
         : Math.cos((s.angle * Math.PI) / 180) > 0.4
@@ -329,7 +331,7 @@ export function explanation(s: Settings) {
   if (s.mode === "dispersion")
     return {
       title: "A fluctuation becomes a shared attraction.",
-      body: "A temporary electron imbalance induces a correlated imbalance next door. More polarizable clouds distort more easily. Dispersion occurs in every atom and molecule, including polar ones.",
+      body: "A temporary electron imbalance induces a correlated imbalance next door. Moving the particles apart weakens the neighbor’s induced response and their attraction, while their own fluctuations continue. More polarizable clouds distort more easily.",
       detail:
         "The clouds are a conceptual model of correlated electron fluctuations, not electron trajectories or a quantum calculation. Greater size can correlate with polarizability, but mass alone is not a law. Chain geometry can increase contact between molecules; N₂ is slightly more polarizable than O₂ despite O₂ having the higher boiling point.",
       status: "Instantaneous dipole ⇄ induced dipole",
@@ -353,7 +355,7 @@ export function explanation(s: Settings) {
       : Math.abs(s.angle) > 40
         ? "Hydrogen bond disrupted"
         : s.distance > 4.3
-          ? "Too far for this schematic hydrogen bond"
+          ? "Weak, distant hydrogen-bond indication"
           : "Favorable donor–H···acceptor",
   };
 }

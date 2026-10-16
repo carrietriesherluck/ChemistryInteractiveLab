@@ -11,6 +11,8 @@ npm ci
 npm run dev
 ```
 
+`npm test` checks the qualitative interaction behavior: charge/radius changes, fixed versus released spacing, orientation, hydrogen-bond partners, and distance-dependent induction.
+
 Open the local address printed by Vite. `npm run build` checks TypeScript and produces `dist/`; `npm run preview` serves the production build locally.
 
 ## Deploy publicly
@@ -46,6 +48,7 @@ Drag the background to orbit; scroll/pinch to zoom. In hydrogen-bond mode, drag 
 ## Architecture
 
 - `src/chemistry.ts`: scientific structures, typed state, descriptions, comparisons, and property content.
+- `src/interactions.ts`: shared qualitative display weights, induction falloff, and scripted held/released separation response.
 - `src/Scene.tsx`: shared atoms, bonds, annotations, dipole arrows, electron clouds, scenes, camera, and rendering fallback.
 - `src/App.tsx`: unified view navigation, contextual controls, live interpretation, prediction prompts, and field guide.
 - `src/styles.css`: responsive design system, visible focus states, and reduced-motion rules.
@@ -54,6 +57,6 @@ Drag the background to orbit; scroll/pinch to zoom. In hydrogen-bond mode, drag 
 
 This is an educational visualization, not molecular dynamics or quantum chemistry. Coordinate units and animation times are illustrative. Atom sizes, density distortions, lone-pair regions, and attraction lines are deliberately schematic. Covalent rods and dashed intermolecular indicators are distinct. No exact attraction forces, boiling points, vapor pressures, or viscosity values are fabricated.
 
-Hydration uses reorientation of a rigid water dipole; varying ion radius preserves a surface gap, rather than holding center separation fixed. Hydrogen-bond indicators use qualitative angle and distance thresholds, not a potential-energy calculation. Electron-density shifts illustrate correlated fluctuations, never electron orbits. A water network and a tetrahedral ice fragment illustrate organization rather than a full periodic crystal. Property particles have predetermined qualitative trajectories, so evaporation/condensation is not a solved equilibrium or thermodynamic prediction. Comparison labels explicitly state controlled and changed variables.
+Attraction arrows and dashed-line weights encode qualitative changes within one mode, never measured force values or universal rankings. Held mode preserves selected separation while controls change the pull. Released mode uses scripted, contact-limited relaxation rather than solving dynamics or predicting equilibrium distances. Dispersion keeps independent fluctuations while the induced response falls with distance. Hydration uses reorientation of a rigid water dipole; varying ion radius preserves a surface gap, rather than holding center separation fixed. Hydrogen-bond indicators use qualitative angle and distance thresholds, not a potential-energy calculation. Electron-density shifts illustrate correlated fluctuations, never electron orbits. A water network and a tetrahedral ice fragment illustrate organization rather than a full periodic crystal. Property particles have predetermined qualitative trajectories, so evaporation/condensation is not a solved equilibrium or thermodynamic prediction. Comparison labels explicitly state controlled and changed variables.
 
 The optional miscibility experiment is omitted to concentrate on the four core forces. See `SCIENCE-NOTES.md` for reference mapping and corrections.

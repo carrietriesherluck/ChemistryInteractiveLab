@@ -17,6 +17,7 @@ import {
   Info,
 } from "lucide-react";
 import Scene from "./Scene";
+import { feedback } from "./interactions";
 import {
   modes,
   molecules,
@@ -329,6 +330,18 @@ export default function App() {
                 <Maximize2 size={17} />
               </button>
             </div>
+            {view === "explore" && (
+              <div className="scene-response" aria-live="polite">
+                <span>{feedback(s).level}</span>
+                <small>
+                  {s.mode === "dispersion"
+                    ? "Independent fluctuations + induced response"
+                    : s.released
+                      ? "Particles released · schematic response"
+                      : "Distance held · change the pull"}
+                </small>
+              </div>
+            )}
             {view === "compare" && (
               <div className="comparison-headings">
                 <span>{comparisons[comparison].a}</span>
@@ -593,12 +606,16 @@ export default function App() {
                   <Range
                     label={
                       s.mode === "ion"
-                        ? "Ion–water surface gap"
-                        : "Molecular separation"
+                        ? s.released
+                          ? "Starting ion–water gap"
+                          : "Ion–water surface gap"
+                        : s.released
+                          ? "Starting separation"
+                          : "Molecular separation"
                     }
                     value={s.distance}
                     min={s.mode === "hydrogen" ? 2.6 : 2.7}
-                    max={5.5}
+                    max={7}
                     step={0.1}
                     display={
                       s.distance < 3.5
@@ -655,6 +672,31 @@ export default function App() {
                       />
                     </>
                   )}
+                  <div className="interaction-feedback" aria-live="polite">
+                    <span className="eyebrow">RESPONSE · ILLUSTRATIVE</span>
+                    <strong>{feedback(s).level}</strong>
+                    <div className="pull-track" aria-hidden="true">
+                      <i style={{ width: `${feedback(s).weight * 100}%` }} />
+                    </div>
+                    <p>{feedback(s).body}</p>
+                    {s.mode !== "dispersion" && (
+                      <button
+                        className="release-button"
+                        aria-pressed={s.released}
+                        onClick={() => update("released", !s.released)}
+                      >
+                        {s.released
+                          ? "Hold at selected separation"
+                          : "Release particles"}
+                        <MoveUpRight size={14} />
+                      </button>
+                    )}
+                    <small>
+                      {s.released
+                        ? "Schematic motion · not a calculated bond length"
+                        : "Solid rods = covalent bonds · dashes = intermolecular attraction"}
+                    </small>
+                  </div>
                   <div className="layer-heading">
                     <Layers3 size={14} /> VISIBLE LAYERS
                   </div>
@@ -878,9 +920,12 @@ export default function App() {
             <h3>Keep the model honest</h3>
             <p>
               These are qualitative molecular models, not force calculations.
-              Electron clouds show density imbalances, not electron orbits.
-              Dispersion coexists with other attractions. No force category is
-              universally strongest.
+              Held distance lets you change the pull without moving the
+              particles. Release particles to show an exaggerated approach or
+              retreat; this does not predict an equilibrium bond length. Solid
+              covalent bonds remain intact. Electron clouds show density
+              imbalances, not electron orbits. Dispersion coexists with other
+              attractions. No force category is universally strongest.
             </p>
             <h3>A note on the course reference</h3>
             <p>

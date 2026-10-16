@@ -1162,3 +1162,94 @@ footer button {
   letter-spacing: 0.8px;
   background: none;
 }
+
+.interaction-feedback {
+  grid-column: 1/-1;
+  padding: 13px;
+  margin: 3px 0 17px;
+  background: #edf3e7;
+  border: 1px solid #d8e4cf;
+  border-radius: 4px;
+}
+.interaction-feedback .eyebrow {
+  font-size: 7px;
+  letter-spacing: 1px;
+}
+.interaction-feedback strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 550;
+  margin: 9px 0;
+}
+.interaction-feedback p {
+  font-size: 10px;
+  line-height: 1.65;
+  margin: 10px 0;
+  color: #62745b;
+}
+.interaction-feedback small {
+  font-size: 8px;
+  display: block;
+  color: #7b8b72;
+  line-height: 1.5;
+  margin-top: 9px;
+}
+.pull-track {
+  height: 4px;
+  background: #dbe5d3;
+  overflow: hidden;
+}
+.pull-track i {
+  display: block;
+  height: 100%;
+  background: #678b65;
+  transition: width 0.25s;
+}
+.release-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  width: 100%;
+  background: #345b46;
+  color: #f1f6ec;
+  font-size: 10px;
+  padding: 9px;
+  border-radius: 3px;
+}
+.release-button:hover {
+  background: #436e53;
+  color: white;
+}
+.scene-label.force-caption {
+  font-size: 9px;
+  letter-spacing: 0.6px;
+  background: #102a23bb;
+}
+.scene-label.cloud-caption {
+  max-width: 290px;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.scene-response {
+  position: absolute;
+  top: 57px;
+  left: 23px;
+  z-index: 2;
+  pointer-events: none;
+  border-left: 2px solid #91bea0;
+  padding-left: 9px;
+}
+.scene-response > span {
+  display: block;
+  font-size: 11px;
+  color: #cae5d2;
+}
+.scene-response small {
+  font-size: 8px;
+  color: #8dac99;
+  display: block;
+  margin-top: 4px;
+}

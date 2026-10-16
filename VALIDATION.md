@@ -14,3 +14,9 @@
 Limits: qualitative models, not computed forces or thermodynamics. No automated molecular dynamics, mobile hardware performance, or screen-reader certification. Browser orbit was exercised; the direct atom-drag path was not conclusively verified through browser automation. Keyboard-accessible separation and orientation controls provide an alternative. The optional miscibility demonstration is omitted.
 
 The initial Sites hosting attempt was blocked by the environment’s shell approval policy. The project was subsequently pushed to `carrietriesherluck/ChemistryInteractiveLab` on GitHub. GitHub Pages is enabled with a deployment workflow that builds using the repository-specific asset path. See the repository’s Actions page for deployment status. The README also covers Netlify and Vercel.
+
+## Interaction-response update
+
+- Regression checks in `tests/interactions.test.ts` verify held spacing, stronger charge response, smaller-radius response, released approach/retreat, donor–acceptor rules, and distance-dependent induction. The tests passed after the update.
+- Browser checks verify charge 1→3 strengthens the feedback at fixed spacing, Release particles changes ion–water spacing, and far separation weakens the dispersion cue and induced cloud component.
+- Covalent bonds remain rigid. The new force-display weights and relaxed positions are qualitative, not measured forces or equilibrium bond lengths.

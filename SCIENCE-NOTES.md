@@ -21,3 +21,9 @@ Cross-checks: [OpenStax Chemistry 2e, 10.1 Intermolecular Forces](https://openst
 | Pages 148–150: like dissolves like                                             | A useful rule of thumb involving unlike/like interactions and entropy, not an absolute law. Optional miscibility is not implemented.                                                                                                                               |
 
 Gas laws, spectroscopy, chromatography, and concentration calculations are excluded. Models show coexistence of forces and avoid universal rankings of force categories.
+
+## Control response clarification
+
+Solid covalent bonds remain rigid in this model. Changing intermolecular forces changes the attraction between particles; it does not directly shorten the O–H or H–Cl covalent rods. At a controlled, held separation, increasing ionic charge strengthens the pull while the spacing remains fixed. The new Release particles control allows an exaggerated, scripted approach, limited to avoid overlap. This is not a prediction of equilibrium hydration distance; real spacing reflects repulsion, solvent environment, temperature, and ion-specific structure.
+
+London clouds now distinguish a source fluctuation from a distance-dependent induced component in its neighbor, with a residual independent fluctuation at large separation. The 1/r³-like induction and steep distance-dependent display weights communicate qualitative trends, not exact quantum dynamics. Display weights are normalized separately for each mode and must not be compared as absolute strengths.
