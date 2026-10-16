@@ -13,4 +13,4 @@
 
 Limits: qualitative models, not computed forces or thermodynamics. No automated molecular dynamics, mobile hardware performance, or screen-reader certification. Browser orbit was exercised; the direct atom-drag path was not conclusively verified through browser automation. Keyboard-accessible separation and orientation controls provide an alternative. The optional miscibility demonstration is omitted.
 
-Public hosting was attempted through Sites. The environment rejected sending source-workflow input because sandbox approval is disabled. No public deployment was completed. `dist/` is ready for static hosting, and the README covers Netlify and Vercel deployment.
+The initial Sites hosting attempt was blocked by the environment’s shell approval policy. The project was subsequently pushed to `carrietriesherluck/ChemistryInteractiveLab` on GitHub. GitHub Pages is enabled with a deployment workflow that builds using the repository-specific asset path. See the repository’s Actions page for deployment status. The README also covers Netlify and Vercel.
