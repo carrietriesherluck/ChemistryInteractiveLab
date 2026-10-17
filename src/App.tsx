@@ -4,7 +4,6 @@ import {
   Atom,
   ChevronRight,
   FlaskConical,
-  Layers3,
   Maximize2,
   Pause,
   Play,
@@ -13,7 +12,6 @@ import {
   X,
   BookOpen,
   MoveUpRight,
-  Check,
   Info,
 } from "lucide-react";
 import Scene from "./Scene";
@@ -28,6 +26,22 @@ import {
   type Mode,
   type Settings,
 } from "./chemistry";
+const compactLabels: Record<string, string> = {
+  "Molecular sample": "Sample",
+  "Neighboring molecule": "Neighbor",
+  "Choose a comparison": "Compare",
+  "Explore a physical property": "Property",
+  "Relative temperature": "Temperature",
+  "Contact geometry": "Shape",
+  "Ionic charge magnitude": "Charge",
+  "Relative ionic radius": "Ion radius",
+  "Ion–water surface gap": "Gap",
+  "Starting ion–water gap": "Starting gap",
+  "Molecular separation": "Separation",
+  "Neighbor orientation": "Orientation",
+  "Relative polarizability": "Polarizability",
+  "Relative particle size": "Size",
+};
 type View = "explore" | "compare" | "matter";
 function Range({
   label,
@@ -53,7 +67,7 @@ function Range({
   return (
     <div className="control">
       <label>
-        <span>{label}</span>
+        <span>{compactLabels[label] ?? label}</span>
         <output>{display ?? value}</output>
       </label>
       <input
@@ -88,7 +102,7 @@ function Toggle({
       aria-checked={checked}
       onClick={onChange}
     >
-      <span>{label}</span>
+      <span>{compactLabels[label] ?? label}</span>
       <span className={`switch ${checked ? "on" : ""}`}>
         <i />
       </span>
@@ -108,7 +122,7 @@ function Select({
 }) {
   return (
     <label className="select-control">
-      <span>{label}</span>
+      <span>{compactLabels[label] ?? label}</span>
       <select
         aria-label={label}
         value={value}
@@ -136,8 +150,6 @@ export default function App() {
     [temp, setTemp] = useState(0.5),
     [reset, setReset] = useState(0),
     [help, setHelp] = useState(false),
-    [predict, setPredict] = useState(false),
-    [reveal, setReveal] = useState(false),
     [wide, setWide] = useState(false),
     [dragStatus, setDragStatus] = useState<string | null>(null);
   const guideRef = useRef<HTMLElement>(null);
@@ -178,8 +190,6 @@ export default function App() {
     setDragStatus(null);
     setS(defaults(mode));
     setView("explore");
-    setPredict(false);
-    setReveal(false);
     setReset((v) => v + 1);
   };
   const restart = () => {
@@ -187,7 +197,6 @@ export default function App() {
     setS(defaults(s.mode));
     setTemp(0.5);
     setReset((r) => r + 1);
-    setReveal(false);
   };
   const info =
     view === "compare"
@@ -223,9 +232,9 @@ export default function App() {
         <nav aria-label="Laboratory views">
           {(
             [
-              { id: "explore", name: "The laboratory" },
-              { id: "compare", name: "Compare forces" },
-              { id: "matter", name: "Molecules → matter" },
+              { id: "explore", name: "Explore" },
+              { id: "compare", name: "Compare" },
+              { id: "matter", name: "Matter" },
             ] as const
           ).map((v) => (
             <button
@@ -233,7 +242,6 @@ export default function App() {
               className={view === v.id ? "active" : ""}
               onClick={() => {
                 setView(v.id);
-                setPredict(false);
               }}
             >
               {v.name}
@@ -251,30 +259,13 @@ export default function App() {
       </header>
       <main>
         <div className="intro">
-          <div>
-            <div className="eyebrow">
-              <span /> AN INTERACTIVE CHEMISTRY LABORATORY
-            </div>
-            <h1>
-              {view === "explore"
-                ? active.question
-                : view === "compare"
-                  ? "What makes an attraction stronger?"
-                  : "Small interactions. Observable effects."}
-            </h1>
-            <p>
-              {view === "explore"
-                ? active.subtitle
-                : view === "compare"
-                  ? "Two systems. One changed variable. A clearer picture."
-                  : "Connect the motion of molecules to the properties you can see."}
-            </p>
-          </div>
-          <div className="unit">
-            <span>AP CHEMISTRY</span>
-            <strong>Unit 03</strong>
-            <small>Properties of substances & mixtures</small>
-          </div>
+          <h1>
+            {view === "explore"
+              ? "Make the invisible visible."
+              : view === "compare"
+                ? "Compare interactions."
+                : "From molecules to matter."}
+          </h1>
         </div>
         <div
           className="force-tabs"
@@ -310,15 +301,13 @@ export default function App() {
                   : view === "compare"
                     ? "A / B"
                     : "MICRO → MACRO"}
-                <span className="scene-top-muted">
-                  {view === "explore" && s.mode === "hydrogen"
-                    ? "Hydrogen-bond exploration"
-                    : view === "explore"
-                      ? active.name
-                      : view === "compare"
-                        ? comparisons[comparison].name
-                        : properties[property].name}
-                </span>
+                {view !== "explore" && (
+                  <span className="scene-top-muted">
+                    {view === "compare"
+                      ? comparisons[comparison].name
+                      : properties[property].name}
+                  </span>
+                )}
               </div>
               <button
                 title={wide ? "Restore workspace size" : "Enlarge workspace"}
@@ -333,13 +322,6 @@ export default function App() {
             {view === "explore" && (
               <div className="scene-response" aria-live="polite">
                 <span>{feedback(s).level}</span>
-                <small>
-                  {s.mode === "dispersion"
-                    ? "Independent fluctuations + induced response"
-                    : s.released
-                      ? "Particles released · schematic response"
-                      : "Distance held · change the pull"}
-                </small>
               </div>
             )}
             {view === "compare" && (
@@ -362,20 +344,12 @@ export default function App() {
             <div className="scene-bottom">
               <div className="legend">
                 <span>
-                  <i className="oxygen" />{" "}
-                  {s.mode === "ion"
-                    ? "Ion"
-                    : s.mode === "dispersion"
-                      ? "N / O"
-                      : s.mode === "dipole" && s.sample === "hcl"
-                        ? "Chlorine"
-                        : "Oxygen / N / F"}
+                  <i className="solid-bond" />
+                  Covalent
                 </span>
                 <span>
-                  <i className="hydrogen" /> Hydrogen
-                </span>
-                <span>
-                  <i className="dashes" /> Attraction
+                  <i className="dashes" />
+                  Attraction
                 </span>
               </div>
               <div className="playback">
@@ -393,21 +367,16 @@ export default function App() {
                 >
                   <RotateCcw size={15} />
                 </button>
-                <span>{s.playing ? "LIVE" : "PAUSED"}</span>
               </div>
             </div>
             <div className="scene-instruction">
-              <MoveUpRight size={13} /> Drag the background to orbit · Scroll to
-              zoom
-              {view === "explore" && s.mode === "hydrogen"
-                ? " · Drag the right molecule to move it"
-                : ""}
+              Drag to rotate · Scroll to zoom
             </div>
           </div>
           <aside className="controls">
             <div className="panel-heading">
               <SlidersHorizontal size={16} />
-              <span>Experiment controls</span>
+              <span>Controls</span>
               <span className="panel-number">
                 {view === "explore"
                   ? active.tag
@@ -432,15 +401,11 @@ export default function App() {
                     }}
                   />
                   <div className="variable-note">
-                    <span>CHANGED VARIABLE</span>
+                    <span>Change</span>
                     <strong>{comparisons[comparison].changed}</strong>
-                    <span>HELD CONSTANT</span>
+                    <span>Same</span>
                     <p>{comparisons[comparison].controlled}</p>
                   </div>
-                  <p className="control-note">
-                    A and B share one camera. Rotate to inspect the same
-                    geometry from both sides.
-                  </p>
                 </>
               ) : view === "matter" ? (
                 <>
@@ -471,11 +436,7 @@ export default function App() {
                       right="Warmer"
                     />
                   )}
-                  <p className="control-note">
-                    {property === "ice"
-                      ? "Compare a closer-packed liquid fragment with an open tetrahedral ice fragment."
-                      : "Both systems have the same temperature and particle count. Cohesion differs between them."}
-                  </p>
+
                   {["ice", "surface"].includes(property) && (
                     <Toggle
                       label="Attraction indicators"
@@ -672,216 +633,154 @@ export default function App() {
                       />
                     </>
                   )}
-                  <div className="interaction-feedback" aria-live="polite">
-                    <span className="eyebrow">RESPONSE · ILLUSTRATIVE</span>
-                    <strong>{feedback(s).level}</strong>
-                    <div className="pull-track" aria-hidden="true">
-                      <i style={{ width: `${feedback(s).weight * 100}%` }} />
-                    </div>
-                    <p>{feedback(s).body}</p>
-                    {s.mode !== "dispersion" && (
-                      <button
-                        className="release-button"
-                        aria-pressed={s.released}
-                        onClick={() => update("released", !s.released)}
-                      >
-                        {s.released
-                          ? "Hold at selected separation"
-                          : "Release particles"}
-                        <MoveUpRight size={14} />
-                      </button>
-                    )}
-                    <small>
-                      {s.released
-                        ? "Schematic motion · not a calculated bond length"
-                        : "Solid rods = covalent bonds · dashes = intermolecular attraction"}
-                    </small>
-                  </div>
-                  <div className="layer-heading">
-                    <Layers3 size={14} /> VISIBLE LAYERS
-                  </div>
-                  <Toggle
-                    label="Atom labels"
-                    checked={s.labels}
-                    onChange={() => update("labels", !s.labels)}
-                  />
                   {s.mode !== "dispersion" && (
-                    <Toggle
-                      label="Partial charges"
-                      checked={s.charges}
-                      onChange={() => update("charges", !s.charges)}
-                    />
+                    <button
+                      className="release-button"
+                      aria-pressed={s.released}
+                      title={
+                        s.released
+                          ? "Restore the selected separation"
+                          : "Allow a schematic approach or retreat"
+                      }
+                      onClick={() => update("released", !s.released)}
+                    >
+                      {s.released ? "Hold particles" : "Release particles"}
+                      <MoveUpRight size={14} />
+                    </button>
                   )}
-                  <Toggle
-                    label="Attraction indicators"
-                    checked={s.attractions}
-                    onChange={() => update("attractions", !s.attractions)}
-                  />
-                  {s.mode === "hydrogen" && (
-                    <>
+                  <details className="view-options" key={s.mode}>
+                    <summary>
+                      View options <ChevronRight size={14} />
+                    </summary>
+                    <div className="option-toggles">
                       <Toggle
-                        label="Lone-pair regions"
-                        checked={s.lonePairs}
-                        onChange={() => update("lonePairs", !s.lonePairs)}
+                        label="Atom labels"
+                        checked={s.labels}
+                        onChange={() => update("labels", !s.labels)}
                       />
-                      <Toggle
-                        label="Donor & acceptor labels"
-                        checked={s.highlight}
-                        onChange={() => update("highlight", !s.highlight)}
-                      />
-                      {s.sample === "water" && s.partner === "same" && (
-                        <button
-                          className={`network-button ${s.network ? "network-on" : ""}`}
-                          onClick={() => update("network", !s.network)}
-                        >
-                          <Atom size={16} />
-                          {s.network
-                            ? "Return to two molecules"
-                            : "Build a water network"}
-                          <ChevronRight size={15} />
-                        </button>
+                      {s.mode !== "dispersion" && (
+                        <Toggle
+                          label="Partial charges"
+                          checked={s.charges}
+                          onChange={() => update("charges", !s.charges)}
+                        />
                       )}
-                    </>
-                  )}
-                  {s.mode === "ion" && (
-                    <Toggle
-                      label="Hydration sphere"
-                      checked={s.network}
-                      onChange={() => update("network", !s.network)}
-                    />
-                  )}
-                  {s.mode === "dipole" && (
-                    <>
                       <Toggle
-                        label="Bond dipoles"
-                        checked={s.bondDipoles}
-                        onChange={() => update("bondDipoles", !s.bondDipoles)}
+                        label="Attraction indicators"
+                        checked={s.attractions}
+                        onChange={() => update("attractions", !s.attractions)}
                       />
-                      <Toggle
-                        label="Net molecular dipoles"
-                        checked={s.netDipole}
-                        onChange={() => update("netDipole", !s.netDipole)}
-                      />
-                    </>
-                  )}
-                  {s.mode === "dispersion" && (
-                    <Toggle
-                      label="Electron-density clouds"
-                      checked={s.cloud}
-                      onChange={() => update("cloud", !s.cloud)}
-                    />
-                  )}
+                      {s.mode === "hydrogen" && (
+                        <>
+                          <Toggle
+                            label="Lone-pair regions"
+                            checked={s.lonePairs}
+                            onChange={() => update("lonePairs", !s.lonePairs)}
+                          />
+                          <Toggle
+                            label="Donor & acceptor labels"
+                            checked={s.highlight}
+                            onChange={() => update("highlight", !s.highlight)}
+                          />
+                          {s.sample === "water" && s.partner === "same" && (
+                            <button
+                              className={`network-button ${s.network ? "network-on" : ""}`}
+                              onClick={() => update("network", !s.network)}
+                            >
+                              <Atom size={16} />
+                              {s.network
+                                ? "Return to two molecules"
+                                : "Build a water network"}
+                              <ChevronRight size={15} />
+                            </button>
+                          )}
+                        </>
+                      )}
+                      {s.mode === "ion" && (
+                        <Toggle
+                          label="Hydration sphere"
+                          checked={s.network}
+                          onChange={() => update("network", !s.network)}
+                        />
+                      )}
+                      {s.mode === "dipole" && (
+                        <>
+                          <Toggle
+                            label="Bond dipoles"
+                            checked={s.bondDipoles}
+                            onChange={() =>
+                              update("bondDipoles", !s.bondDipoles)
+                            }
+                          />
+                          <Toggle
+                            label="Net molecular dipoles"
+                            checked={s.netDipole}
+                            onChange={() => update("netDipole", !s.netDipole)}
+                          />
+                        </>
+                      )}
+                      {s.mode === "dispersion" && (
+                        <Toggle
+                          label="Electron-density clouds"
+                          checked={s.cloud}
+                          onChange={() => update("cloud", !s.cloud)}
+                        />
+                      )}
+                    </div>
+                  </details>
                 </>
               )}
-              <div className="model-note">
-                <Info size={13} />
-                <span>
-                  Conceptual model. Distances, motion, and cloud distortions are
-                  illustrative.
-                </span>
-              </div>
+              <button className="model-note" onClick={() => setHelp(true)}>
+                <Info size={12} />
+                <span>Illustrative model</span>
+              </button>
             </div>
           </aside>
         </section>
-        <section className="insight" aria-live="polite">
+        <section className="insight quiet-insight" aria-live="polite">
           <div className="insight-symbol">
-            <FlaskConical size={23} />
+            <FlaskConical size={20} />
           </div>
           <div className="insight-content">
-            <div className="eyebrow">WHAT YOU’RE SEEING</div>
-            <h2>{info.title}</h2>
-            <p>{info.body}</p>
+            <p>
+              {view === "compare"
+                ? comparisons[comparison].why
+                : view === "matter"
+                  ? {
+                      evaporation:
+                        "Stronger attractions make it harder for molecules to escape.",
+                      vapor:
+                        "Stronger attractions mean less vapor at the same temperature.",
+                      surface:
+                        "Cohesion makes increasing the liquid’s surface area costly.",
+                      viscosity:
+                        "Attractions and molecular structure can slow flow.",
+                      ice: "Ice’s open hydrogen-bonded structure takes up more space.",
+                    }[property]
+                  : s.mode === "ion"
+                    ? "Water turns its opposite partial charge toward the ion."
+                    : s.mode === "dipole"
+                      ? molecules[s.sample].polar
+                        ? "Unlike ends attract; like ends repel."
+                        : "Polar bonds can cancel, leaving no net molecular dipole."
+                      : s.mode === "dispersion"
+                        ? "A fleeting electron imbalance induces a dipole next door."
+                        : s.sample === "ether" && s.partner === "same"
+                          ? "Ether can accept a hydrogen bond, but cannot donate one."
+                          : "A donor’s hydrogen is attracted to a neighboring lone pair."}
+            </p>
             <details key={view + s.mode + property}>
               <summary>
-                Look a little closer <ChevronRight size={13} />
+                Why? <ChevronRight size={13} />
               </summary>
+              <h2>{info.title}</h2>
+              <p>{info.body}</p>
               <p>{info.detail}</p>
+              {dragStatus && <p>{dragStatus}</p>}
             </details>
           </div>
-          <div className="observation">
-            <span className="eyebrow">CURRENT OBSERVATION</span>
-            <p>
-              <span className="observation-dot" />
-              {view === "explore" && s.mode === "hydrogen" && dragStatus
-                ? dragStatus
-                : info.status}
-            </p>
-          </div>
         </section>
-        <div className="explore-strip">
-          <div>
-            <span className="eyebrow">FOLLOW YOUR CURIOSITY</span>
-            <h3>A different perspective changes everything.</h3>
-          </div>
-          <button
-            onClick={() => {
-              setView("compare");
-              setReset((r) => r + 1);
-            }}
-          >
-            <span>01 / SIDE BY SIDE</span>Compare an interaction{" "}
-            <ArrowUpRight size={19} />
-          </button>
-          <button
-            onClick={() => {
-              setView("matter");
-              setReset((r) => r + 1);
-            }}
-          >
-            <span>02 / THE BIGGER PICTURE</span>From molecules to matter{" "}
-            <ArrowUpRight size={19} />
-          </button>
-        </div>
-        {view === "explore" && (
-          <div className="prediction">
-            <button
-              onClick={() => {
-                setPredict(!predict);
-                setReveal(false);
-              }}
-            >
-              <span>✧</span> Pause for a prediction <ChevronRight size={15} />
-            </button>
-            {predict && (
-              <div>
-                <p>
-                  {s.mode === "ion"
-                    ? "If you reverse the ion’s charge, which end of water will turn inward?"
-                    : s.mode === "dipole"
-                      ? "What will happen when the second molecule turns by 180°?"
-                      : s.mode === "dispersion"
-                        ? "Can two nonpolar molecules attract without permanent dipoles?"
-                        : "Can dimethyl ether accept a hydrogen bond from water?"}
-                </p>
-                <button className="reveal" onClick={() => setReveal(true)}>
-                  {reveal ? <Check size={15} /> : <Play size={13} />}{" "}
-                  {reveal ? "Mechanism revealed" : "Reveal the mechanism"}
-                </button>
-                {reveal && (
-                  <p className="answer">
-                    {s.mode === "ion"
-                      ? "Oxygen faces a positive ion; the hydrogen side faces a negative ion. Try switching the central ion."
-                      : s.mode === "dipole"
-                        ? "For HCl in this arrangement, favorable unlike ends become unfavorable like ends. For BF₃ and CO₂, the net dipole remains zero."
-                        : s.mode === "dispersion"
-                          ? "Yes. Correlated temporary electron imbalances give rise to dispersion, even when the average distribution is symmetric."
-                          : "Yes. Water supplies an O–H donor, and ether supplies an oxygen lone-pair acceptor. Only the donor needs an O–H bond."}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        )}
       </main>
-      <footer>
-        <span>
-          INTERMOLECULAR<span className="brand-dot">.</span>
-        </span>
-        <p>Make the invisible visible.</p>
-        <button onClick={() => setHelp(true)}>
-          Science & model notes <ArrowUpRight size={13} />
-        </button>
-      </footer>
       {help && (
         <div className="modal-backdrop" onClick={() => setHelp(false)}>
           <section

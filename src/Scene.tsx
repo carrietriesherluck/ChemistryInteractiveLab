@@ -628,15 +628,11 @@ function Dipole({ s }: { s: Settings }) {
         strength={pull}
         show={s.attractions}
       />
-      <Label p={[0, -2, 0]} tone="force-caption">
-        {!molecules[s.sample].polar
-          ? "Σ bond dipoles = 0 · dispersion remains"
-          : pull < -0.05
-            ? "LIKE ENDS · REPULSIVE ARRANGEMENT"
-            : pull > 0.05
-              ? "UNLIKE ENDS · ATTRACTIVE ARRANGEMENT"
-              : "TURNING POINT · WEAK AXIAL PULL"}
-      </Label>
+      {!molecules[s.sample].polar && (
+        <Label p={[0, -2, 0]} tone="force-caption">
+          Net dipole = 0
+        </Label>
+      )}
     </>
   );
 }
@@ -738,12 +734,12 @@ function Dispersion({ s }: { s: Settings }) {
     if (sign.current)
       sign.current.textContent =
         phase < 1
-          ? "01 · Average electron distribution"
+          ? "Average cloud"
           : phase < 2
-            ? "02 · A temporary dipole forms"
+            ? "Temporary dipole"
             : coupling < 0.2
-              ? "03 · Weak induction · independent fluctuations remain"
-              : "03 · Correlated dipoles · neighbor responds";
+              ? "Weak induction"
+              : "Induced dipole";
   });
   const sample = chain
     ? s.shape === "branched"
@@ -800,15 +796,15 @@ function Dispersion({ s }: { s: Settings }) {
       {!chain && (
         <>
           <Label p={[-spacing / 2, 1.55, 0]} tone="force-caption">
-            INSTANTANEOUS
+            Temporary dipole
           </Label>
           <Label p={[spacing / 2, 1.55, 0]} tone="force-caption">
-            INDUCED RESPONSE
+            Induced dipole
           </Label>
         </>
       )}
       <Label p={[0, chain ? -2.8 : -2, 0]} tone="cloud-caption" labelRef={sign}>
-        Average electron distribution
+        Average cloud
       </Label>
     </>
   );
