@@ -1398,3 +1398,5 @@ main {
     margin-top: 12px;
   }
 }
+.laboratory.expanded{height:730px}
+@media(max-width:780px){.laboratory.expanded{height:auto}}
